@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="http://127.0.0.1:8000/api/api.js?client_id=R1Vnka_rToKSoiZwtFD11w"></script>
+  <script src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
+  <script src="shortcut.js"></script>
+  <script>
+
+  function swap(arr, i, j) {
+    var x = arr[i];
+    arr[i] = arr[j];
+    arr[j] = x;
+  }
+
+  // http://en.wikipedia.org/wiki/Fisher-Yates_shuffle
+  function shuffle(arr) {
+    for (i = arr.length-1; i >= 1; i--) {
+      var j = Math.floor(Math.random() * (i+1));
+      swap(arr, i, j);
+    }
+  }
+
+  var albumCount = 0;
+  var currentIndex = -1;
+  var albums;
+
+  function playNextAlbum() {
+    currentIndex = (currentIndex + 1) % albumCount;
+    album = albums[currentIndex];
+    while (!album.canStream) {
+      currentIndex = (currentIndex + 1) % albumCount;
+      album = albums[currentIndex];
+    }
+    R.Services.Player.playSource({source: albums[currentIndex]});
+    updatePrevButton();
+  }
+
+  function playPreviousAlbum() {
+    currentIndex = currentIndex-1 < 0 ? 0 : currentIndex-1;
+    R.Services.Player.playSource({source: albums[currentIndex]});
+    updatePrevButton();
+  }
+
+  function updateArtwork() {
+    var track = R.Services.Player.model.get('playingTrack');
+    if (track != null) {
+      if (typeof track.icon != 'undefined') {
+        $('#artwork').attr('src', track.icon.replace('square-200', 'square-600'));
+      }
+    }
+  }
+
+  function updatePrevButton() {
+    var b = $('#prevButton');
+    if (currentIndex > 0) {
+      b.removeAttr('disabled');
+    } else {
+      b.attr('disabled', '');
+    }
+  }
+
+  $(document).ready(function() {
+    R.on('ready', function() {
+      updateArtwork();
+      shortcut.add('Right', function() {
+        R.Services.Player.next();
+      });
+      shortcut.add('Left', function() {
+        R.Services.Player.previous();
+      });
+      shortcut.add('Space', function() {
+        R.Services.Player.playPause();
+      });
+      var prevShortcut = 'Alt+Left';
+      var nextShortcut = 'Alt+Right';
+      shortcut.add(nextShortcut, function() {
+        playNextAlbum();
+      });
+      shortcut.add(prevShortcut, function() {
+        playPreviousAlbum();
+      });
+      R.Services.Player.model.bind('change:playingTrack', function() {
+        updateArtwork();
+      });
+      $('#prevButton').attr('title', 'Previous album (' + prevShortcut + ')');
+      $('#nextButton').attr('title', 'Next album (' + nextShortcut + ')');
+      R.on('access_token', function() {
+        R.call('getAlbumsInCollection', {'extras':'-*,key,canStream', 'user': 's'+R.currentUser.get('id')}, function(response) {
+          $('#loading').hide();
+          if (response.status != 'ok') {
+            console.log('Error getting albums: ' + response.message);
+            $('#error').show();
+            return;
+          }
+          $('#loaded').show();
+          albums = response.result;
+          albumCount = albums.length;
+          shuffle(albums);
+          R.Services.Player.model.bind('change:playingSource', function() {
+            var source = R.Services.Player.model.get('playingSource');
+            if (source.key != albums[currentIndex].key) {
+              playNextAlbum();
+            }
+          });
+        });
+      });
+    });
+  });
+  </script>
+  <style type="text/css">
+    body
+    {
+      font-family: "Helvetica";
+    }
+    #loading
+    {
+      font-size: 20;
+      color: #333333;
+    }
+    #loaded
+    {
+      display: none;
+    }
+    #error
+    {
+      font-size: 20;
+      color: red;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Album shuffle</h1>
+  <div id="loading">
+    <img src="spinner.gif" width="20" height="20">&nbsp;Loading&hellip;
+  </div>
+  <h2 id="error">Error loading albums</h2>
+  <div id="loaded">
+    <button id="prevButton" disabled="" onclick="playPreviousAlbum();">&larr; Previous album</button>
+    <button id="nextButton" onclick="playNextAlbum();">Next album &rarr;</button>
+  </div>
+  <img id="artwork"/>
+  <br/><br/>
+</body>
+</html>

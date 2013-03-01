@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="http://127.0.0.1:8000/api/api.js?client_id=R1Vnka_rToKSoiZwtFD11w"></script>
+  <script src="https://rdio.com/api/api.js?client_id=nV-rMLn23eTMuk-5dRxfWg"></script>
   <script src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
   <script src="shortcut.js"></script>
   <script>
@@ -31,21 +31,22 @@
       currentIndex = (currentIndex + 1) % albumCount;
       album = albums[currentIndex];
     }
-    R.Services.Player.playSource({source: albums[currentIndex]});
+    R.player.play({source: albums[currentIndex]});
     updatePrevButton();
   }
 
   function playPreviousAlbum() {
     currentIndex = currentIndex-1 < 0 ? 0 : currentIndex-1;
-    R.Services.Player.playSource({source: albums[currentIndex]});
+    R.player.playSource({source: albums[currentIndex]});
     updatePrevButton();
   }
 
   function updateArtwork() {
-    var track = R.Services.Player.model.get('playingTrack');
+    var track = R.player.playingTrack();
     if (track != null) {
-      if (typeof track.icon != 'undefined') {
-        $('#artwork').attr('src', track.icon.replace('square-200', 'square-600'));
+      var icon = track.get('icon');
+      if (typeof icon != 'undefined') {
+        $('#artwork').attr('src', icon.replace('square-200', 'square-600'));
       }
     }
   }
@@ -60,16 +61,17 @@
   }
 
   $(document).ready(function() {
-    R.on('ready', function() {
+    R.ready(function() {
+      //R.authenticate();
       updateArtwork();
       shortcut.add('Right', function() {
-        R.Services.Player.next();
+        R.player.next();
       });
       shortcut.add('Left', function() {
-        R.Services.Player.previous();
+        R.player.previous();
       });
       shortcut.add('Space', function() {
-        R.Services.Player.playPause();
+        R.player.playPause();
       });
       var prevShortcut = 'Alt+Left';
       var nextShortcut = 'Alt+Right';
@@ -79,30 +81,22 @@
       shortcut.add(prevShortcut, function() {
         playPreviousAlbum();
       });
-      R.Services.Player.model.bind('change:playingTrack', function() {
+      R.player.on('change:playingTrack', function() {
         updateArtwork();
       });
       $('#prevButton').attr('title', 'Previous album (' + prevShortcut + ')');
       $('#nextButton').attr('title', 'Next album (' + nextShortcut + ')');
-      R.on('access_token', function() {
-        R.call('getAlbumsInCollection', {'extras':'-*,key,canStream', 'user': 's'+R.currentUser.get('id')}, function(response) {
-          $('#loading').hide();
-          if (response.status != 'ok') {
-            console.log('Error getting albums: ' + response.message);
-            $('#error').show();
-            return;
-          }
-          $('#loaded').show();
-          albums = response.result;
-          albumCount = albums.length;
-          shuffle(albums);
-          R.Services.Player.model.bind('change:playingSource', function() {
-            var source = R.Services.Player.model.get('playingSource');
-            if (source.key != albums[currentIndex].key) {
-              playNextAlbum();
-            }
-          });
-        });
+      R.authenticate(function(authenticated) {
+        R.request({
+          method:'getAlbumsInCollection',
+          content:{'extras':'-*,key,canStream', 'user': R.currentUser.get('key')},
+          success:function(response) {
+            $('#loading').hide();
+            $('#loaded').show();
+            albums = response.result;
+            albumCount = albums.length;
+            shuffle(albums);
+        }});
       });
     });
   });

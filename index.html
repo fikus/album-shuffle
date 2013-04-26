@@ -32,13 +32,13 @@
       currentIndex = (currentIndex + 1) % albumCount;
       album = albums[currentIndex];
     }
-    R.player.play({source: albums[currentIndex]});
+    R.player.play({source: albums[currentIndex].key});
     updatePrevButton();
   }
 
   function playPreviousAlbum() {
     currentIndex = currentIndex-1 < 0 ? 0 : currentIndex-1;
-    R.player.playSource({source: albums[currentIndex]});
+    R.player.playSource({source: albums[currentIndex].key});
     updatePrevButton();
   }
 

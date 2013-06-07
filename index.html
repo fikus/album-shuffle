@@ -61,9 +61,30 @@
     }
   }
 
+  function onAuthenticated() {
+    $('#authenticate').hide();
+    $('#loading').show();
+    R.request({
+      method:'getAlbumsInCollection',
+      content:{'extras':'-*,key,canStream', 'user': R.currentUser.get('key')},
+      success:function(response) {
+        $('#loading').hide();
+        $('#loaded').show();
+        albums = response.result;
+        albumCount = albums.length;
+        shuffle(albums);
+    }});
+  }
+
+  function authenticate() {
+    $('#authenticate').hide();
+    $('#loading').show();
+    R.authenticate(onAuthenticated);
+  }
+
   $(document).ready(function() {
+    $('#authenticate').hide();
     R.ready(function() {
-      //R.authenticate();
       updateArtwork();
       shortcut.add('Right', function() {
         R.player.next();
@@ -87,18 +108,13 @@
       });
       $('#prevButton').attr('title', 'Previous album (' + prevShortcut + ')');
       $('#nextButton').attr('title', 'Next album (' + nextShortcut + ')');
-      R.authenticate(function(authenticated) {
-        R.request({
-          method:'getAlbumsInCollection',
-          content:{'extras':'-*,key,canStream', 'user': R.currentUser.get('key')},
-          success:function(response) {
-            $('#loading').hide();
-            $('#loaded').show();
-            albums = response.result;
-            albumCount = albums.length;
-            shuffle(albums);
-        }});
-      });
+
+      if (R.authenticated()) {
+        onAuthenticated();
+      } else {
+        $('#loading').hide();
+        $('#authenticate').show();
+      }
     });
   });
   </script>
@@ -130,6 +146,9 @@
     <img src="spinner.gif" width="20" height="20">&nbsp;Loading&hellip;
   </div>
   <h2 id="error">Error loading albums</h2>
+  <div id="authenticate">
+    <button onclick="authenticate();">Sign in to Rdio</button>
+  </div>
   <div id="loaded">
     <button id="prevButton" disabled="" onclick="playPreviousAlbum();">&larr; Previous album</button>
     <button id="nextButton" onclick="playNextAlbum();">Next album &rarr;</button>

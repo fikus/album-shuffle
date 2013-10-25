@@ -38,7 +38,12 @@
   }
 
   function playPreviousAlbum() {
-    currentIndex = currentIndex-1 < 0 ? 0 : currentIndex-1;
+    currentIndex = (currentIndex - 1) % albumCount;
+    album = albums[currentIndex];
+    while (!album.canStream) {
+      currentIndex = (currentIndex-1) % albumCount;
+      album = albums[currentIndex];
+    }
     R.player.play({source: albums[currentIndex].key});
     updatePrevButton();
   }
